@@ -6,6 +6,9 @@
     "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/static": "^1.4.10",
+    "@supabase/supabase-js": "^2.116.0",
     "elysia": "latest"
   },
   "devDependencies": {
