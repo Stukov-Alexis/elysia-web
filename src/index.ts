@@ -75,3 +75,4 @@ function permission(image: { uploaded_by: string } | null, user: AuthUser | null
 }
 
 console.log(`Booru API is running at http://${app.server?.hostname}:${app.server?.port}`);
+
