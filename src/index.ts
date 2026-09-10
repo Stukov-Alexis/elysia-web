@@ -1,9 +1,9 @@
 import cors from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
-import { authenticate } from "./auth";
-import { config } from "./config";
-import { allTags, createImage, deleteImage, getImage, listImages, removeUploadedFile, updateImage, uploadImage } from "./store";
-import type { AuthUser } from "./types";
+import { authenticate } from "./auth.js";
+import { config } from "./config.js";
+import { allTags, createImage, deleteImage, getImage, listImages, removeUploadedFile, updateImage, uploadImage } from "./store.js";
+import type { AuthUser } from "./types.js";
 
 const app = new Elysia()
   .use(cors())

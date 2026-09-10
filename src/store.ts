@@ -1,6 +1,6 @@
-import { config } from "./config";
-import { supabase } from "./supabase";
-import type { ImageRecord } from "./types";
+import { config } from "./config.js";
+import { supabase } from "./supabase.js";
+import type { ImageRecord } from "./types.js";
 
 const memoryImages: ImageRecord[] = [];
 

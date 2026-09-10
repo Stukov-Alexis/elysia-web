@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import type { AuthUser } from "./types";
+import { supabase } from "./supabase.js";
+import type { AuthUser } from "./types.js";
 
 export async function authenticate(authorization?: string): Promise<AuthUser | null> {
   if (!supabase || !authorization?.startsWith("Bearer ")) return null;
