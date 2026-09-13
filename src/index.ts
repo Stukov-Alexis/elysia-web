@@ -75,6 +75,10 @@ if (!process.env.VERCEL) {
   console.log(`Booru API is running at http://${server.server?.hostname}:${server.server?.port}`);
 }
 
+export default function handler(request: Request) {
+  return app.handle(request);
+}
+
 function parseTags(value?: string) { return value ? [...new Set(value.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean))] : []; }
 
 function permission(image: { uploaded_by: string } | null, user: AuthUser | null) {
