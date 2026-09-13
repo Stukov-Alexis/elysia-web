@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import cors from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
 import { authenticate } from "./auth.js";
@@ -5,10 +6,13 @@ import { config } from "./config.js";
 import { allTags, createImage, deleteImage, getImage, listImages, removeUploadedFile, updateImage, uploadImage } from "./store.js";
 import type { AuthUser } from "./types.js";
 
-const app = new Elysia()
+export const app = new Elysia()
   .use(cors())
   .derive(async ({ headers }) => ({ user: await authenticate(headers.authorization) }))
-  .get("/", () => Bun.file("public/index.html"))
+  .get("/", async ({ set }) => {
+    set.headers["content-type"] = "text/html; charset=utf-8";
+    return new Response(await readFile("public/index.html"));
+  })
   .get("/me", ({ user, set }) => {
     if (!user) { set.status = 401; return { error: "Unauthorized" }; }
     return user;
@@ -63,7 +67,12 @@ const app = new Elysia()
     await deleteImage(image!);
     return { success: true };
   })
-  .listen(config.port);
+  ;
+
+if (!process.env.VERCEL) {
+  const server = app.listen(config.port);
+  console.log(`Booru API is running at http://${server.server?.hostname}:${server.server?.port}`);
+}
 
 function parseTags(value?: string) { return value ? [...new Set(value.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean))] : []; }
 
@@ -74,5 +83,4 @@ function permission(image: { uploaded_by: string } | null, user: AuthUser | null
   return 0;
 }
 
-console.log(`Booru API is running at http://${app.server?.hostname}:${app.server?.port}`);
 
