@@ -2,7 +2,7 @@
   "bunVersion": "1.x",
   "functions": {
     "api/index.ts": {
-      "includeFiles": ["public/**"]
+      "includeFiles": "public/**"
     }
   },
   "rewrites": [
