@@ -1,0 +1,698 @@
+BOORU IMAGE SHARING APP — WORKFLOW
+
+PROJECT STACK
+
+* Frontend: Next.js / React
+* Backend: ElysiaJS + Bun
+* Authentication: Supabase Auth
+* Database: Supabase PostgreSQL
+* Image Storage: Supabase Storage
+
+==================================================
+
+1. USER TYPES
+   ==================================================
+
+Anonymous User
+
+* Can view images
+* Can search images
+* Cannot upload
+* Cannot edit
+* Cannot delete
+
+Registered User
+
+* Can view images
+* Can search images
+* Can upload images
+* Can edit their own images
+* Can delete their own images
+
+Admin
+
+* Can view images
+* Can search images
+* Can upload images
+* Can edit images
+* Can delete any image
+
+==================================================
+2. OVERALL ARCHITECTURE
+=======================
+
+```
+                     USER
+                       |
+                       v
+            +---------------------+
+            |      FRONTEND       |
+            |    Next.js/React    |
+            +----------+----------+
+                       |
+                HTTP Request
+                + JWT when needed
+                       |
+                       v
+            +---------------------+
+            |      ELYSIAJS       |
+            |       API           |
+            +----------+----------+
+                       |
+         +-------------+-------------+
+         |             |             |
+         v             v             v
+  Supabase Auth   PostgreSQL     Supabase Storage
+                   Database          Images
+         |             |
+         |             +----------------------+
+         |                                    |
+         +------------------------------------+
+```
+
+==================================================
+3. PUBLIC USER WORKFLOW
+=======================
+
+Anonymous user opens the website.
+
+```
+                       USER
+                        |
+                        v
+                 View Gallery
+                        |
+                        v
+                 GET /images
+                        |
+                        v
+                    ElysiaJS
+                        |
+                        v
+                   PostgreSQL
+                        |
+                        v
+              Image metadata + URL
+                        |
+                        v
+                Supabase Storage
+                        |
+                        v
+                   Show images
+```
+
+SEARCH WORKFLOW
+
+User enters:
+cat
+    |
+    v
+GET /search?tag=cat
+    |
+    v
+ElysiaJS
+    |
+    v
+PostgreSQL searches tags
+    |
+    v
+Matching image records
+    |
+    v
+Frontend displays results
+
+Anonymous users can access:
+
+GET /images
+GET /images/:id
+GET /search?tag=cat
+GET /tags
+
+Anonymous users cannot access:
+
+POST /images
+PATCH /images/:id
+DELETE /images/:id
+
+Protected requests return:
+
+401 Unauthorized
+
+==================================================
+4. REGISTRATION / LOGIN WORKFLOW
+================================
+
+User
+|
+| Register
+v
+Supabase Auth
+|
+v
+Account created
+|
+v
+User logs in
+|
+v
+Supabase Auth
+|
+v
+JWT / Session
+|
+v
+Frontend
+|
+v
+User can access protected ElysiaJS endpoints
+
+Login request:
+
+Frontend
+|
+v
+Supabase Auth
+|
+v
+JWT
+|
+v
+Frontend
+|
+v
+ElysiaJS API
+
+Protected request contains:
+
+Authorization: Bearer <JWT>
+
+==================================================
+5. REGISTERED USER UPLOAD WORKFLOW
+==================================
+
+User selects an image
+|
+v
+Frontend
+|
+| POST /images
+| image + tags + JWT
+v
+ElysiaJS
+|
+v
+Verify JWT
+|
++------ Invalid ------> 401 Unauthorized
+|
+v
+Valid
+|
+v
+Upload image to Supabase Storage
+|
+v
+Supabase returns image URL/path
+|
+v
+Save metadata to PostgreSQL
+|
+v
+Image record created
+|
+v
+Return image information
+|
+v
+Frontend displays image
+
+Example database record:
+
+## images
+
+id
+filename
+url
+tags
+uploaded_by
+created_at
+
+Example:
+
+id = 123
+filename = cat.jpg
+url = https://.../cat.jpg
+tags = cat, animal, night
+uploaded_by = 45
+
+==================================================
+6. IMAGE STORAGE WORKFLOW
+=========================
+
+The actual image file is stored in:
+
+Supabase Storage
+
+Example:
+
+images/
+├── 123-cat.jpg
+├── 124-dog.jpg
+├── 125-landscape.jpg
+└── ...
+
+PostgreSQL stores only metadata:
+
+## images
+
+id
+filename
+url
+tags
+uploaded_by
+created_at
+
+The database does NOT need to store the actual image binary.
+
+==================================================
+7. IMAGE VIEW WORKFLOW
+======================
+
+User clicks image #123
+    |
+    v
+GET /images/123
+    |
+    v
+ElysiaJS
+    |
+    v
+PostgreSQL
+    |
+    v
+Return:
+
+{
+id: 123,
+filename: "cat.jpg",
+url: "...",
+tags: ["cat", "animal", "night"],
+uploaded_by: 45
+}
+
+    |
+    v
+Frontend uses the URL
+    |
+    v
+Supabase Storage
+    |
+    v
+Display image
+
+This endpoint can be public.
+
+==================================================
+8. EDIT IMAGE WORKFLOW
+======================
+
+Registered user wants to edit their own image.
+
+PATCH /images/123
+    |
+    v
+ElysiaJS
+|
+v
+Verify JWT
+|
+v
+Find image #123
+|
+v
+Check uploaded_by
+|
++------ Different user ------> 403 Forbidden
+|
+v
+Current user owns image
+|
+v
+Update PostgreSQL
+|
+v
+Return updated image
+
+Admins can skip the ownership restriction.
+
+==================================================
+9. DELETE IMAGE WORKFLOW
+========================
+
+User requests:
+
+DELETE /images/123
+    |
+    v
+ElysiaJS
+|
+v
+Check JWT
+|
++------ Not logged in ------> 401 Unauthorized
+|
+v
+Find image
+|
+v
+Check user role / ownership
+|
++-----------------------------+
+|                             |
+v                             v
+Normal User                        Admin
+|                             |
+Check uploaded_by                     |
+|                             |
++----+----+                        |
+|         |                        |
+v         v                        |
+Owner     Not Owner                   |
+|         |                        |
+v         v                        v
+Allow      403 Forbidden          Allow delete
+|                                  |
++----------------+-----------------+
+|
+v
+Delete file from
+Supabase Storage
+|
+v
+Delete record from
+PostgreSQL
+|
+v
+Return success
+
+Rules:
+
+Anonymous:
+Cannot delete
+
+Registered User:
+Can delete own image only
+
+Admin:
+Can delete any image
+
+==================================================
+10. COMPLETE CRUD WORKFLOW
+==========================
+
+CREATE
+
+POST /images
+|
+v
+Verify JWT
+|
+v
+Upload to Supabase Storage
+|
+v
+Save metadata to PostgreSQL
+|
+v
+Return image
+
+READ
+
+GET /images
+GET /images/:id
+|
+v
+ElysiaJS
+|
+v
+PostgreSQL
+|
+v
+Return metadata + image URL
+|
+v
+Frontend displays image
+
+UPDATE
+
+PATCH /images/:id
+|
+v
+Verify JWT
+|
+v
+Check ownership/admin
+|
+v
+Update PostgreSQL
+|
+v
+Return updated image
+
+DELETE
+
+DELETE /images/:id
+|
+v
+Verify JWT
+|
+v
+Check ownership/admin
+|
+v
+Delete image from Supabase Storage
+|
+v
+Delete database record
+|
+v
+Return success
+
+==================================================
+11. API ENDPOINTS
+=================
+
+PUBLIC ENDPOINTS
+
+GET /images
+Get image gallery.
+
+GET /images/:id
+Get a specific image.
+
+GET /search?tag=cat
+Search images by tag.
+
+GET /tags
+Get available tags.
+
+AUTHENTICATED ENDPOINTS
+
+POST /images
+Upload a new image.
+
+PATCH /images/:id
+Edit your own image.
+
+DELETE /images/:id
+Delete your own image.
+
+ADMIN ENDPOINTS
+
+PATCH /images/:id
+Edit any image.
+
+DELETE /images/:id
+Delete any image.
+
+==================================================
+12. SIMPLE DATABASE STRUCTURE
+=============================
+
+## users
+
+id
+email
+username
+role
+created_at
+
+## images
+
+id
+filename
+url
+tags
+uploaded_by
+created_at
+
+Optional later:
+
+## comments
+
+id
+image_id
+user_id
+content
+created_at
+
+## favorites
+
+user_id
+image_id
+created_at
+
+==================================================
+13. AUTHORIZATION LOGIC
+=======================
+
+When accessing a protected endpoint:
+
+Request
+|
+v
+Does JWT exist?
+|
++---- NO ----> 401 Unauthorized
+|
+v
+Verify JWT
+|
++---- Invalid ----> 401 Unauthorized
+|
+v
+Get current user
+|
+v
+Check permission
+|
++---- Not allowed ----> 403 Forbidden
+|
+v
+Perform action
+
+For deleting an image:
+
+if user is not authenticated:
+return 401
+
+if user.role == "admin":
+allow
+
+else if image.uploaded_by == user.id:
+allow
+
+else:
+return 403
+
+==================================================
+14. FINAL SYSTEM FLOW
+=====================
+
+```
+                +----------------+
+                |     USER       |
+                +-------+--------+
+                        |
+                        v
+                +---------------+
+                |    FRONTEND   |
+                | Next.js/React |
+                +-------+-------+
+                        |
+                        v
+                +---------------+
+                |   ELYSIAJS    |
+                |      API      |
+                +-------+-------+
+                        |
+           +------------+------------+
+           |            |            |
+           v            v            v
+    +-----------+ +-----------+ +------------+
+    | Supabase  | | Supabase  | | Supabase   |
+    |   Auth    | | PostgreSQL | |  Storage   |
+    +-----------+ +-----------+ +------------+
+                       |              |
+                       |              |
+                       v              v
+                   Metadata        Image Files
+```
+
+==================================================
+15. MVP PERMISSION MODEL
+========================
+
+ANONYMOUS
+
+VIEW       ✅
+SEARCH     ✅
+UPLOAD     ❌
+EDIT       ❌
+DELETE     ❌
+
+REGISTERED USER
+
+VIEW       ✅
+SEARCH     ✅
+UPLOAD     ✅
+EDIT OWN   ✅
+DELETE OWN ✅
+DELETE ANY ❌
+
+ADMIN
+
+VIEW       ✅
+SEARCH     ✅
+UPLOAD     ✅
+EDIT       ✅
+DELETE     ✅
+
+==================================================
+16. SIMPLE MVP SCOPE
+====================
+
+FIRST VERSION SHOULD ONLY HAVE:
+
+1. Registration / Login
+2. Image upload
+3. Image gallery
+4. Image detail page
+5. Tags
+6. Search by tags
+7. Delete own images
+8. Admin role
+9. Admin delete
+10. Supabase Storage
+
+Do NOT add initially:
+
+* Redis
+* WebSockets
+* Microservices
+* Image processing workers
+* Complex recommendation systems
+* Multiple databases
+* Elasticsearch
+
+Start with:
+
+Next.js/React
++
+ElysiaJS + Bun
++
+Supabase Auth
++
+Supabase PostgreSQL
++
+Supabase Storage
