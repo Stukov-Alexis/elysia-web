@@ -11,7 +11,8 @@ export const app = new Elysia()
   .derive(async ({ headers }) => ({ user: await authenticate(headers.authorization) }))
   .get("/", async ({ set }) => {
     set.headers["content-type"] = "text/html; charset=utf-8";
-    return new Response(await readFile("public/index.html"));
+    const page = new URL("../public/index.html", import.meta.url);
+    return new Response(await readFile(page));
   })
   .get("/me", ({ user, set }) => {
     if (!user) { set.status = 401; return { error: "Unauthorized" }; }
