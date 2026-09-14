@@ -26,6 +26,17 @@ export const app = new Elysia()
     backgroundVideoUrl: config.supabaseUrl && config.backgroundVideoPath ? publicAssetUrl(config.backgroundBucket, config.backgroundVideoPath) : "",
     faviconUrl: config.supabaseUrl ? publicAssetUrl(config.backgroundBucket, config.faviconPath) : "",
   }))
+  .get("/favicon.svg", async ({ set }) => {
+    if (config.supabaseUrl) {
+      const response = await fetch(publicAssetUrl(config.backgroundBucket, config.faviconPath));
+      if (response.ok) {
+        set.headers["cache-control"] = "no-store";
+        return new Response(await response.arrayBuffer(), { headers: { "content-type": "image/svg+xml" } });
+      }
+    }
+    set.headers["content-type"] = "image/svg+xml";
+    return new Response(await readFile(new URL("../public/favicon.svg", import.meta.url)));
+  })
   .get("/images", ({ query }) => listImages(query.tag))
   .get("/images/:id", async ({ params, set }) => {
     const image = await getImage(params.id);

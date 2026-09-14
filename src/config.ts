@@ -7,7 +7,7 @@ export const config = {
   backgroundBucket: process.env.SUPABASE_BACKGROUND_BUCKET ?? "server",
   backgroundPath: process.env.SUPABASE_BACKGROUND_PATH ?? "background.jpg",
   backgroundVideoPath: process.env.SUPABASE_BACKGROUND_VIDEO_PATH ?? "",
-  faviconPath: process.env.SUPABASE_FAVICON_PATH ?? "favicon.png",
+  faviconPath: process.env.SUPABASE_FAVICON_PATH ?? "favicon.svg",
 };
 
 export const supabaseEnabled = Boolean(

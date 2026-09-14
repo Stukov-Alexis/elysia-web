@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link id="site-icon" rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link id="site-icon" rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
   <title>Romantiku monogatari</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap');
@@ -16,21 +16,30 @@
     #background-video.visible { display: block; }
     body.video-background::before { background: linear-gradient(rgba(9, 9, 20, .48), rgba(9, 9, 20, .84)); }
     main { position: relative; z-index: 1; max-width: 1120px; margin: auto; padding: 72px 20px 48px; }
-    .control-tray { position: fixed; z-index: 3; top: 18px; left: 20px; width: min(340px, calc(100% - 40px)); padding: 14px; background: rgba(16, 14, 32, .88); border: 1px solid rgba(255, 186, 241, .48); border-radius: 3px; box-shadow: 0 0 28px rgba(213, 103, 221, .16); font-family: var(--ui-font); backdrop-filter: blur(14px); }
+    .control-tray { position: fixed; z-index: 3; top: 0; bottom: 0; left: 0; width: min(360px, 86vw); height: 100vh; padding: 24px 14px; overflow-y: auto; background: rgba(16, 14, 32, .9); border: 1px solid rgba(255, 186, 241, .48); border-left: 0; border-radius: 0 12px 12px 0; box-shadow: 0 0 28px rgba(213, 103, 221, .2); font-family: var(--ui-font); backdrop-filter: blur(14px); transition: transform .32s ease, box-shadow .32s ease; }
     .control-tray summary { cursor: pointer; color: #ffc3f5; font-weight: bold; letter-spacing: .08em; text-transform: uppercase; }
     .control-tray summary::before { content: "✦"; margin-right: 8px; color: #a9d9ff; }
     .control-tray summary::marker { color: #a9d9ff; }
+    .control-tray:not([open]) { top: 0; bottom: 0; width: min(360px, 86vw); height: 100vh; padding: 0; transform: translateX(calc(-100% + 46px)); overflow: hidden; border-left: 0; border-radius: 0 12px 12px 0; box-shadow: 0 0 22px rgba(169, 217, 255, .28); }
+    .control-tray:not([open]) summary { position: absolute; top: 50%; right: 0; width: 46px; padding: 10px 8px; transform: translateY(-50%); font-size: 0; text-align: center; }
+    .control-tray:not([open]) summary::before { content: none; }
+    .tray-icon { display: none; }
+    .control-tray:not([open]) .tray-icon { display: block; width: 24px; height: 24px; margin: 0 auto; object-fit: contain; }
     .tray-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(185, 169, 255, .25); }
     .tray-section h2 { margin: 0 0 10px; font-family: var(--display-font); font-size: 1rem; color: #ffe6fb; }
     .control-tray form { display: grid; gap: 8px; }
+    .control-tray form[hidden] { display: none; }
     .control-tray .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .control-tray button { padding: 9px; }
+    .upload-toggle { width: 100%; }
     .login-status { color: #d5c7e5; font-size: 12px; min-height: 16px; }
-    header { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 32px; }
+    header { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 32px; padding: 20px 22px; background: rgba(12, 13, 33, .68); border: 1px solid rgba(160, 194, 255, .3); border-radius: 3px; box-shadow: 0 14px 40px rgba(0, 0, 0, .2); backdrop-filter: blur(8px); }
     h1 { color: #fce9ff; font-family: var(--display-font); font-size: clamp(2.5rem, 7vw, 5.5rem); line-height: .86; margin: 0; letter-spacing: .02em; text-shadow: 0 0 24px rgba(255, 139, 232, .58); }
     p { color: #f89ae8; margin: 10px 0 0; font-family: var(--ui-font); font-weight: 500; letter-spacing: .03em; }
     .tools { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 28px; padding: 12px; background: rgba(12, 13, 33, .68); border: 1px solid rgba(160, 194, 255, .3); border-radius: 3px; box-shadow: 0 14px 40px rgba(0, 0, 0, .2); }
     input, button { border: 1px solid rgba(185, 169, 255, .46); border-radius: 2px; padding: 12px 14px; font: 600 15px var(--ui-font); letter-spacing: .03em; }
+    textarea { width: 100%; max-width: 100%; min-height: 92px; resize: none; border: 1px solid rgba(185, 169, 255, .46); border-radius: 2px; padding: 12px 14px; font: 600 15px var(--ui-font); letter-spacing: .03em; background: rgba(14, 14, 35, .88); color: #fff; }
+    textarea:focus { outline: 1px solid #ff9de9; box-shadow: 0 0 14px rgba(255, 157, 233, .22); }
     input { background: rgba(14, 14, 35, .88); color: #fff; min-width: 0; }
     input:focus { outline: 1px solid #ff9de9; box-shadow: 0 0 14px rgba(255, 157, 233, .22); }
     button { background: linear-gradient(115deg, #ff9bdc, #b79cff); border-color: #ffc3f5; color: #241536; cursor: pointer; font-weight: bold; }
@@ -72,13 +81,13 @@
     .confirm-actions { display: flex; justify-content: center; gap: 10px; }
     .confirm-actions button[type="button"] { background: transparent; color: #fce9ff; }
     @media (max-width: 650px) { .edit-panel { grid-template-columns: 1fr; max-height: 90vh; overflow-y: auto; } .edit-preview { max-height: 42vh; } }
-    @media (max-width: 650px) { header { display: block; } .control-tray { left: 12px; width: calc(100% - 24px); } }
+    @media (max-width: 650px) { header { display: block; } .control-tray { width: min(340px, 88vw); } .control-tray:not([open]) { width: min(340px, 88vw); } }
   </style>
 </head>
 <body>
   <video id="background-video" autoplay muted loop playsinline aria-hidden="true"></video>
-  <details class="control-tray" open>
-    <summary>Control tray</summary>
+  <details class="control-tray">
+    <summary><img id="tray-icon" class="tray-icon" src="/favicon.svg?v=2" alt="Open control tray">Control tray</summary>
     <section class="tray-section">
       <h2 id="account-label">Login / Register</h2>
       <form id="auth-form">
@@ -90,8 +99,8 @@
       </form>
     </section>
     <section class="tray-section">
-      <h2>Upload image</h2>
-      <form id="upload">
+      <button id="upload-toggle" class="upload-toggle" type="button">↑ Upload image</button>
+      <form id="upload" hidden>
         <input id="file" type="file" accept="image/*" required>
         <input id="filename" placeholder="Displayed image name" maxlength="120" required>
         <textarea id="description" placeholder="Description (optional)" maxlength="5000" rows="4"></textarea>
@@ -144,6 +153,8 @@
     const authStatus = document.querySelector('#auth-status');
     const accountLabel = document.querySelector('#account-label');
     const logout = document.querySelector('#logout');
+    const uploadToggle = document.querySelector('#upload-toggle');
+    const uploadForm = document.querySelector('#upload');
     const filenameInput = document.querySelector('#filename');
     const descriptionInput = document.querySelector('#description');
     const viewer = document.querySelector('#viewer');
@@ -184,7 +195,17 @@
       const loggedIn = Boolean(token());
       accountLabel.textContent = loggedIn ? 'Account connected' : 'Login / Register';
       logout.hidden = !loggedIn;
+      uploadToggle.textContent = loggedIn ? '↑ Upload image' : '🔒 Login to upload';
     }
+
+    uploadToggle.addEventListener('click', () => {
+      if (!token()) {
+        authStatus.textContent = 'Please login before uploading.';
+        return;
+      }
+      uploadForm.hidden = !uploadForm.hidden;
+      uploadToggle.textContent = uploadForm.hidden ? '↑ Upload image' : '↓ Hide upload form';
+    });
 
     async function loadCurrentUser() {
       const accessToken = token();
@@ -305,6 +326,8 @@
         uploadStatus.textContent = `Upload completed: ${result.filename}`;
         setStatus('Upload completed.');
         event.target.reset();
+        uploadForm.hidden = true;
+        uploadToggle.textContent = '↑ Upload image';
         loadImages();
       } catch (error) {
         uploadStatus.textContent = `Upload failed: ${error.message}`;
@@ -313,7 +336,11 @@
     });
     fetch('/config').then((response) => response.json()).then(async (config) => {
       supabaseConfig = config;
-      if (config.faviconUrl) document.querySelector('#site-icon').href = config.faviconUrl;
+      if (config.faviconUrl) {
+        const iconUrl = `/favicon.svg?v=${Date.now()}`;
+        document.querySelector('#site-icon').href = iconUrl;
+        document.querySelector('#tray-icon').src = iconUrl;
+      }
       const backgroundVideo = document.querySelector('#background-video');
       if (config.backgroundVideoUrl) {
         backgroundVideo.src = config.backgroundVideoUrl;
