@@ -41,7 +41,8 @@ export const app = new Elysia()
     try {
       uploaded = await uploadImage(body.image);
       const filename = typeof body.filename === "string" && body.filename.trim() ? body.filename.trim() : body.image.name;
-      return await createImage({ id: uploaded.id, filename, url: uploaded.url, storagePath: uploaded.storagePath, tags: parseTags(body.tags), uploaded_by: user.id, created_at: new Date().toISOString() });
+      const description = typeof body.description === "string" ? body.description.trim() : "";
+      return await createImage({ id: uploaded.id, filename, description, url: uploaded.url, storagePath: uploaded.storagePath, tags: parseTags(body.tags), uploaded_by: user.id, created_at: new Date().toISOString() });
     } catch (error) {
       if (uploaded?.storagePath) {
         try { await removeUploadedFile(uploaded.storagePath); } catch { /* keep original error */ }
@@ -55,7 +56,7 @@ export const app = new Elysia()
     const status = permission(image, user);
     if (status) { set.status = status; return { error: status === 401 ? "Unauthorized" : status === 404 ? "Image not found" : "Forbidden" }; }
     return updateImage(params.id, body);
-  }, { body: t.Object({ filename: t.Optional(t.String()), tags: t.Optional(t.Array(t.String())) }) })
+  }, { body: t.Object({ filename: t.Optional(t.String()), description: t.Optional(t.String()), tags: t.Optional(t.Array(t.String())) }) })
   .delete("/images/:id", async ({ params, user, set }) => {
     const image = await getImage(params.id);
     const status = permission(image, user);

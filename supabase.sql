@@ -1,12 +1,16 @@
 create table if not exists public.images (
   id uuid primary key,
   filename text not null,
+  description text not null default '',
   url text not null,
   storage_path text,
   tags text[] not null default '{}',
   uploaded_by uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+alter table public.images
+add column if not exists description text not null default '';
 
 create index if not exists images_tags_idx on public.images using gin(tags);
 

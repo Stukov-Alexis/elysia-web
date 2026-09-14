@@ -47,11 +47,13 @@
     .tags { color: #ffb9e9; font-size: 13px; margin-top: 7px; }
     .upload { display: grid; gap: 8px; }
     .status { min-height: 22px; color: #ffc3f5; font: 600 14px var(--ui-font); letter-spacing: .04em; }
-    .viewer { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .88); }
+    .viewer { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .88); overflow: hidden; }
     .viewer[hidden] { display: none; }
     .viewer img { max-width: 95vw; max-height: 88vh; object-fit: contain; }
     .viewer-close { position: absolute; top: 18px; right: 24px; padding: 4px 12px; background: transparent; color: #fff; border: 1px solid #aaa; font-size: 28px; }
-    .viewer-name { position: absolute; bottom: 18px; color: #fff; font: 600 15px var(--ui-font); letter-spacing: .05em; }
+    .viewer-info { width: min(760px, 92vw); max-height: 28vh; overflow-y: auto; padding: 14px 18px; background: rgba(16, 14, 38, .9); border: 1px solid rgba(255, 186, 241, .4); text-align: left; }
+    .viewer-name { color: #fff; font: 600 15px var(--ui-font); letter-spacing: .05em; }
+    .viewer-description { margin: 8px 0 0; color: #d5c7e5; white-space: pre-wrap; line-height: 1.5; }
     .edit-view { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 24px; background: rgba(5, 5, 16, .86); backdrop-filter: blur(10px); }
     .edit-view[hidden] { display: none; }
     .edit-panel { display: grid; grid-template-columns: minmax(220px, 360px) minmax(260px, 420px); gap: 26px; width: min(820px, 100%); padding: 24px; background: rgba(16, 14, 38, .96); border: 1px solid rgba(255, 186, 241, .58); box-shadow: 0 0 45px rgba(213, 103, 221, .28); }
@@ -92,6 +94,7 @@
       <form id="upload">
         <input id="file" type="file" accept="image/*" required>
         <input id="filename" placeholder="Displayed image name" maxlength="120" required>
+        <textarea id="description" placeholder="Description (optional)" maxlength="5000" rows="4"></textarea>
         <input id="tags" placeholder="Tags: cat, animal, night">
         <button>↑ Upload</button>
       </form>
@@ -101,7 +104,7 @@
   <div id="viewer" class="viewer" hidden>
     <button id="viewer-close" class="viewer-close" type="button" aria-label="Close full screen view">&times;</button>
     <img id="viewer-image" alt="">
-    <div id="viewer-name" class="viewer-name"></div>
+    <div class="viewer-info"><div id="viewer-name" class="viewer-name"></div><p id="viewer-description" class="viewer-description"></p></div>
   </div>
   <section id="edit-view" class="edit-view" hidden aria-label="Edit image">
     <div class="edit-panel">
@@ -110,6 +113,8 @@
         <h2>Edit image</h2>
         <label for="edit-filename">Displayed name</label>
         <input id="edit-filename" maxlength="120" required>
+        <label for="edit-description">Description</label>
+        <textarea id="edit-description" maxlength="5000" rows="6"></textarea>
         <label for="edit-tags">Tags, separated by commas</label>
         <input id="edit-tags" placeholder="cat, animal, night">
         <div id="edit-status" class="edit-status"></div>
@@ -140,13 +145,16 @@
     const accountLabel = document.querySelector('#account-label');
     const logout = document.querySelector('#logout');
     const filenameInput = document.querySelector('#filename');
+    const descriptionInput = document.querySelector('#description');
     const viewer = document.querySelector('#viewer');
     const viewerImage = document.querySelector('#viewer-image');
     const viewerName = document.querySelector('#viewer-name');
+    const viewerDescription = document.querySelector('#viewer-description');
     const editView = document.querySelector('#edit-view');
     const editForm = document.querySelector('#edit-form');
     const editPreview = document.querySelector('#edit-preview');
     const editFilename = document.querySelector('#edit-filename');
+    const editDescription = document.querySelector('#edit-description');
     const editTags = document.querySelector('#edit-tags');
     const editStatus = document.querySelector('#edit-status');
     let editingImageId = null;
@@ -212,7 +220,7 @@
       gallery.innerHTML = images.length ? images.map((image) => {
         const canManage = currentUser && (currentUser.role === 'admin' || currentUser.id === image.uploaded_by);
         const actions = canManage ? `<div class="card-actions"><button type="button" data-edit-id="${image.id}">✎ Edit</button><button type="button" data-delete-id="${image.id}">× Delete</button></div>` : '';
-        return `<article class="card"><img src="${image.url}" alt="${image.filename}" data-full-image="${image.url}" data-image-name="${image.filename}"><div class="meta"><div class="filename">${image.filename}</div><div class="tags">${image.tags.map((item) => `#${item}`).join(' ')}</div></div>${actions}</article>`;
+        return `<article class="card"><img src="${image.url}" alt="${image.filename}" data-full-image="${image.url}" data-image-name="${image.filename}" data-image-description="${encodeURIComponent(image.description || '')}"><div class="meta"><div class="filename">${image.filename}</div><div class="tags">${image.tags.map((item) => `#${item}`).join(' ')}</div></div>${actions}</article>`;
       }).join('') : '<p>No images found.</p>';
       setStatus(`${images.length} image${images.length === 1 ? '' : 's'}`);
     }
@@ -229,6 +237,7 @@
         editPreview.src = image.url;
         editPreview.alt = image.filename;
         editFilename.value = image.filename;
+        editDescription.value = image.description || '';
         editTags.value = image.tags.join(', ');
         editStatus.textContent = '';
         editView.hidden = false;
@@ -246,7 +255,7 @@
     editForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       editStatus.textContent = 'Saving changes...';
-      const response = await fetch(`/images/${editingImageId}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ filename: editFilename.value.trim(), tags: editTags.value.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean) }) });
+      const response = await fetch(`/images/${editingImageId}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ filename: editFilename.value.trim(), description: editDescription.value.trim(), tags: editTags.value.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean) }) });
       if (!response.ok) { editStatus.textContent = `Save failed: ${response.status}`; return; }
       editView.hidden = true;
       setStatus('Image updated.');
@@ -265,6 +274,7 @@
       viewerImage.src = image.dataset.fullImage;
       viewerImage.alt = image.dataset.imageName;
       viewerName.textContent = image.dataset.imageName;
+      viewerDescription.textContent = decodeURIComponent(image.dataset.imageDescription || '');
       viewer.hidden = false;
     });
     function closeViewer() { viewer.hidden = true; viewerImage.src = ''; }
@@ -286,6 +296,7 @@
       const body = new FormData();
       body.append('image', file);
       body.append('filename', filenameInput.value.trim() || file.name);
+      body.append('description', descriptionInput.value.trim());
       body.append('tags', document.querySelector('#tags').value);
       try {
         const response = await fetch('/images', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body });

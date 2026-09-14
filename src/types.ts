@@ -3,6 +3,7 @@ export type UserRole = "user" | "admin";
 export type ImageRecord = {
   id: string;
   filename: string;
+  description?: string;
   url: string;
   storagePath?: string;
   tags: string[];

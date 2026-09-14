@@ -38,7 +38,7 @@ export async function removeUploadedFile(storagePath: string) {
   if (error) throw new Error(`Storage cleanup failed: ${error.message}`);
 }
 
-export async function updateImage(id: string, changes: { filename?: string; tags?: string[] }) {
+export async function updateImage(id: string, changes: { filename?: string; description?: string; tags?: string[] }) {
   if (!supabase) {
     const image = memoryImages.find((item) => item.id === id);
     if (!image) return null;
