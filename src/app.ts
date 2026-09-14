@@ -5,6 +5,7 @@ import { authenticate } from "./auth.js";
 import { config } from "./config.js";
 import { allTags, createImage, deleteImage, getImage, listImages, removeUploadedFile, updateImage, uploadImage } from "./store.js";
 import type { AuthUser } from "./types.js";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 export const app = new Elysia()
   .use(cors())
@@ -62,6 +63,22 @@ export const app = new Elysia()
     await deleteImage(image!);
     return { success: true };
   });
+
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  const protocol = req.headers["x-forwarded-proto"] ?? "https";
+  const host = req.headers.host ?? "localhost";
+  const method = req.method ?? "GET";
+  const requestInit = {
+    method,
+    headers: new Headers(req.headers as Record<string, string>),
+    body: method === "GET" || method === "HEAD" ? undefined : (req as unknown as ReadableStream),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" };
+  const response = await app.handle(new Request(`${protocol}://${host}${req.url ?? "/"}`, requestInit));
+  res.statusCode = response.status;
+  response.headers.forEach((value, key) => res.setHeader(key, value));
+  res.end(Buffer.from(await response.arrayBuffer()));
+}
 
 function publicAssetUrl(bucket: string, path: string) {
   return `${config.supabaseUrl}/storage/v1/object/public/${bucket}/${path.split("/").map(encodeURIComponent).join("/")}`;
