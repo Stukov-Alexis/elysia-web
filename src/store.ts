@@ -17,6 +17,25 @@ export async function listImages(tag?: string) {
   return (data as Record<string, unknown>[]).map(fromDatabase);
 }
 
+export async function searchImages(term: string) {
+  const normalized = term.trim().toLowerCase();
+  if (!normalized) return listImages();
+  if (!supabase) {
+    return memoryImages.filter((image) => image.filename.toLowerCase().includes(normalized) || image.tags.some((tag) => tag.includes(normalized)));
+  }
+
+  const [titleResult, tagResult] = await Promise.all([
+    supabase.from("images").select("*").ilike("filename", `%${normalized}%`),
+    supabase.from("images").select("*").contains("tags", [normalized]),
+  ]);
+  if (titleResult.error) throw titleResult.error;
+  if (tagResult.error) throw tagResult.error;
+  const rows = [...(titleResult.data ?? []), ...(tagResult.data ?? [])];
+  const uniqueRows = [...new Map(rows.map((row) => [row.id, row])).values()];
+  uniqueRows.sort((left, right) => String(right.created_at).localeCompare(String(left.created_at)));
+  return (uniqueRows as Record<string, unknown>[]).map(fromDatabase);
+}
+
 export async function getImage(id: string) {
   if (!supabase) return memoryImages.find((image) => image.id === id) ?? null;
   const { data, error } = await supabase.from("images").select("*").eq("id", id).maybeSingle();

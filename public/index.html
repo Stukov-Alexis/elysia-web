@@ -140,7 +140,7 @@
   </section>
   <main>
     <header><div><h1>My<br>Koleksi</h1><p>Entah dapet dari mana yg pasti ada.</p></div><div id="status" class="status"></div></header>
-    <form id="search" class="tools"><input id="tag" placeholder="Search by tag, e.g. cat"><button>⌕ Search</button></form>
+    <form id="search" class="tools"><input id="tag" placeholder="Search title or tag, e.g. Elly or cat"><button>⌕ Search</button></form>
     <section id="gallery" class="gallery"></section>
   </main>
   <script>
@@ -236,7 +236,7 @@
     async function loadImages() {
       const tag = document.querySelector('#tag').value.trim();
       setStatus('Loading...');
-      const response = await fetch(tag ? `/search?tag=${encodeURIComponent(tag)}` : '/images');
+      const response = await fetch(tag ? `/search?q=${encodeURIComponent(tag)}` : '/images');
       const images = await response.json();
       gallery.innerHTML = images.length ? images.map((image) => {
         const canManage = currentUser && (currentUser.role === 'admin' || currentUser.id === image.uploaded_by);
@@ -311,6 +311,7 @@
       const accessToken = token();
       if (!accessToken) { uploadStatus.textContent = 'Please login before uploading.'; return; }
       if (!file) { uploadStatus.textContent = 'Choose an image first.'; return; }
+      if (file.size > 4 * 1024 * 1024) { uploadStatus.textContent = 'Image is too large. Please choose a file smaller than 4 MB.'; return; }
       const confirmed = await askConfirmation('Upload image?', `Upload "${file.name}" to the gallery?`);
       if (!confirmed) { uploadStatus.textContent = 'Upload cancelled.'; return; }
       uploadStatus.textContent = 'Uploading image...';
@@ -321,7 +322,9 @@
       body.append('tags', document.querySelector('#tags').value);
       try {
         const response = await fetch('/images', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body });
-        const result = await response.json();
+        const responseText = await response.text();
+        let result;
+        try { result = responseText ? JSON.parse(responseText) : {}; } catch { result = { error: responseText || 'Server returned an invalid response.' }; }
         if (!response.ok) throw new Error(result.error || `Upload failed: ${response.status}`);
         uploadStatus.textContent = `Upload completed: ${result.filename}`;
         setStatus('Upload completed.');

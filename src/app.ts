@@ -3,7 +3,7 @@ import cors from "@elysiajs/cors";
 import { Elysia, t } from "elysia";
 import { authenticate } from "./auth.js";
 import { config } from "./config.js";
-import { allTags, createImage, deleteImage, getImage, listImages, removeUploadedFile, updateImage, uploadImage } from "./store.js";
+import { allTags, createImage, deleteImage, getImage, listImages, removeUploadedFile, searchImages, updateImage, uploadImage } from "./store.js";
 import type { AuthUser } from "./types.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
@@ -43,7 +43,7 @@ export const app = new Elysia()
     if (!image) { set.status = 404; return { error: "Image not found" }; }
     return image;
   })
-  .get("/search", ({ query }) => listImages(query.tag))
+  .get("/search", ({ query }) => searchImages(query.q ?? query.tag ?? ""))
   .get("/tags", async () => allTags(await listImages()))
   .post("/images", async ({ body, user, set }) => {
     if (!user) { set.status = 401; return { error: "Unauthorized" }; }
