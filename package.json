@@ -13,10 +13,10 @@
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/static": "^1.4.10",
     "@supabase/supabase-js": "^2.116.0",
+    "@vercel/analytics": "^2.0.1",
     "elysia": "latest"
   },
   "devDependencies": {
     "bun-types": "latest"
   }
 }
-
